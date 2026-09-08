@@ -56,126 +56,59 @@ It does not contain the dataset itself. It acts as a pointer that DVC uses to kn
 
 # Question 6: You can check your main branch on the github web UI. Is the code there? Is the data there? Do you have any file that points to the data location. And what about dagshub web UI do you see the data?
 
+
 The code and project files are present on GitHub.
 
-The actual dataset is not stored on GitHub because the `data` folder is ignored by Git. Instead, Git contains the `data.dvc` file.
+The actual dataset is not stored on GitHub because the data folders are ignored by Git. Instead, Git contains DVC pointer files such as:
 
-The `data.dvc` file contains metadata about the tracked dataset, such as its path, size, number of files and hash. DVC uses this information to identify which version of the dataset belongs to the current Git commit.
+```text
+data.dvc
+data_sample.dvc
 
-The actual dataset is supposed to be uploaded to the DVC remote on DagsHub using:
+These files contain metadata about the tracked data, including the path and hash used by DVC to identify the correct version.
 
-```bash
-dvc push
+The full Food-11 dataset was too large to upload successfully to DagsHub because of repeated connection timeouts. To still test the DVC workflow, I created a smaller data_sample folder containing one image and tracked it with DVC.
 
-In my case, the DagsHub upload did not complete successfully because of repeated connection timeouts and server disconnections.
+I then pushed only this sample using:
+
+uv run dvc push data_sample.dvc
+
+This worked successfully. The pointer file is stored on GitHub, while the actual image is stored in the DVC remote on DagsHub.
 
 ##Question 7: In a completely new temporary folder clone your github repo. Do you see the data folder? What dvc command is needed to get the data folder?
 
-After cloning the GitHub repository into a new folder, the actual data folder is not present.
+After cloning the GitHub repository into a new temporary folder, the actual data file was not present.
 
-This is because Git does not track the dataset itself. The repository only contains the data.dvc pointer file.
+Git only cloned the repository files and the DVC pointer file data_sample.dvc.
 
-To retrieve the dataset from the DVC remote, the following command is used:
+To retrieve the tracked image from the DVC remote, I used:
 
-dvc pull
+uv run dvc pull data_sample.dvc
 
-Since DVC is installed inside the uv environment in this project, it can also be run as:
+After running this command, the data_sample folder was created and the tracked image 0_0.jpg appeared inside it.
 
-uv run dvc pull
+This shows that Git stores the DVC pointer file, while DVC retrieves the actual data from the remote storage.
 
-DVC reads the information from data.dvc and restores the correct version of the data folder from the remote storage.
+## Question 8: Do you still see the new folders you created? food11_processed and food11_processed_mini?
 
-Python script to prepare the image files
+After checking out the older commit and running:
 
-The raw Food-11 dataset contains three folders:
-
-training
-evaluation
-validation
-
-The category of each image is represented by the first part of its filename.
-
-The preparation script creates two new datasets:
-
-food11_processed
-food11_processed_mini
-
-The processed datasets are different from the raw dataset in the following ways:
-
-The images are resized to 128x128.
-The images are placed inside folders that represent their category.
-The mini dataset contains at most 100 images for each category.
-
-The resulting structure is similar to:
-
-data/
-├── food11_raw/
-│   ├── training/
-│   ├── evaluation/
-│   └── validation/
-│
-├── food11_processed/
-│   ├── training/
-│   │   ├── Bread/
-│   │   ├── Dairy product/
-│   │   ├── Dessert/
-│   │   ├── Egg/
-│   │   ├── Fried food/
-│   │   ├── Meat/
-│   │   ├── Noodles-Pasta/
-│   │   ├── Rice/
-│   │   ├── Seafood/
-│   │   ├── Soup/
-│   │   └── Vegetable-Fruit/
-│   ├── evaluation/
-│   └── validation/
-│
-└── food11_processed_mini/
-    ├── training/
-    ├── evaluation/
-    └── validation/
-
-Pillow is added to the project using:
-
-uv add pillow
-
-The data preparation script is run using:
-
-uv run python ./src/food11/data.py
-
-After the processed datasets are created, the updated data folder is tracked again with DVC:
-
-dvc add data
-
-Then the new DVC pointer is committed to Git:
-
-git add data.dvc
-git commit -m "Add food11_processed and food11_processed_mini"
-git push
-
-The actual updated data would then be uploaded to the DVC remote using:
-
-dvc push
-
-##Question 8: Do you still see the new folders you created? food11_processed and food11_processed_mini?
-
-After checking out an older Git commit with:
-
-git checkout <old-commit-hash>
-
-the data.dvc file changes to the version stored in that commit.
-
-Then, after running:
-
+```bash
 dvc checkout
 
-DVC updates the local dataset so that it matches the version referenced by that older data.dvc file.
+the food11_processed and food11_processed_mini folders were no longer present. Only the older food11_raw data remained.
 
-If the selected commit was created before food11_processed and food11_processed_mini were added, these two folders are no longer present.
+This happened because the older Git commit contains an older version of data.dvc, and dvc checkout restores the local data to match that version.
 
-When switching back to the main branch:
+After switching back to the main branch with:
 
 git checkout main
 dvc checkout
 
-the current version of data.dvc is restored and DVC restores the newer version of the dataset, which includes food11_processed and food11_processed_mini.
+the newer data version was restored and the folders appeared again:
+
+food11_raw
+food11_processed
+food11_processed_mini
+
+This shows how Git versions the DVC pointer file, while DVC restores the corresponding version of the actual data.
