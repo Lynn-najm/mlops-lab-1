@@ -16,3 +16,13 @@ A single-stage image includes build tools, the full uv cache, and intermediate f
 
 Question 6:
 Without .dockerignore, Docker sends the entire project to the daemon on every build, including data/, mlruns/, and .git/. This slows down the build significantly. The data/ folder would not break the build but would bloat the image unnecessarily. The .venv/ folder could conflict with the one built inside the image and cause subtle runtime errors.
+
+Question 7:
+Inside a container, 127.0.0.1 refers to the container's own loopback interface, not the host machine. A service running on the host is unreachable at that address. host.docker.internal is a DNS name provided by Docker Desktop on Mac/Windows that resolves to the host machine's internal IP, allowing containers to reach services running on the host.
+
+Question 8:
+Yes — the model is not baked into the image. It is fetched from the MLflow tracking server at startup every time the container runs. This means the image stays lightweight and model updates only require reassigning the champion alias, not rebuilding the image.
+
+Question 9:
+The image only exists locally. It has not been pushed to a container registry (like Docker Hub or GitHub Container Registry). Without a registry, another machine has no way to pull it. The missing step is tagging the image with a registry path and running docker push.
+

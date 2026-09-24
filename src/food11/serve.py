@@ -1,9 +1,17 @@
 import os
 import io
+import torch
 import mlflow.pyfunc
 import numpy as np
 from PIL import Image
 from fastapi import FastAPI, UploadFile, File
+
+# Force all torch.load calls to map tensors to CPU (model was saved on MPS)
+_orig_torch_load = torch.load
+def _cpu_torch_load(*args, **kwargs):
+    kwargs.setdefault("map_location", torch.device("cpu"))
+    return _orig_torch_load(*args, **kwargs)
+torch.load = _cpu_torch_load
 
 app = FastAPI()
 

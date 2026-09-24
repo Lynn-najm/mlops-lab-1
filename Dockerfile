@@ -1,15 +1,18 @@
 # Stage 1 - builder: install dependencies
-FROM python:3.11-slim AS builder
+FROM python:3.13-slim AS builder
 
 RUN pip install uv
 
+ENV UV_PYTHON_DOWNLOADS=never
+
 WORKDIR /app
 
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml uv.lock README.md ./
+COPY src/ ./src/
 RUN uv sync --frozen --no-dev
 
 # Stage 2 - runtime: lean final image
-FROM python:3.11-slim AS runtime
+FROM python:3.13-slim AS runtime
 
 WORKDIR /app
 
