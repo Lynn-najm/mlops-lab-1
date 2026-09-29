@@ -9,3 +9,30 @@ In Lab 3, mlflow ran as a process on the host, outside Docker — from inside th
 
 Question 4:
 http://inference:8000 only resolves inside a Compose-managed network, where Compose's embedded DNS registers "inference" as the sibling container's hostname. If that were hardcoded and you ran the frontend image standalone with `docker run` (outside Compose, no sibling "inference" container), that hostname wouldn't exist and the request would fail with a DNS error. Reading INFERENCE_URL from an environment variable keeps the same image reusable across contexts — inside this Compose stack, standalone against a locally running API, or pointed at a different host entirely — just by changing one env var at run time, no rebuild needed. Same decoupling principle as MLFLOW_TRACKING_URI in serve.py.
+
+Question 5:
+A published port maps a container port to the host so a human can reach it from outside Docker — mlflow's UI and the frontend's UI need that. inference is never called directly by a human here, only by frontend, and that call happens entirely inside the Compose network: Docker routes it straight to the container's listening port (8000) via Compose's internal DNS (http://inference:8000), never touching the host's port table. Publishing it would just open an unused port on the host.
+
+Question 6:
+serve.py calls mlflow.pyfunc.load_model(...) at import time, which needs a live HTTP connection to mlflow. depends_on only guarantees the mlflow container process has started, not that its server is accepting connections yet. If inference starts before mlflow is actually ready, the model-loading call fails, the unhandled exception kills the Python process, and the inference container exits immediately (visible as "Exited" in `docker compose ps`, with the connection-refused traceback in `docker compose logs inference`). depends_on handles ordering, not readiness — a real fix would need a healthcheck or retry logic, which this basic compose file doesn't have.
+
+Question 7:
+docker compose ps shows frontend as 0.0.0.0:8501->8501/tcp and mlflow as 0.0.0.0:5001->5000/tcp — both have a host:container port mapping, since a human needs to reach them directly in a browser. inference shows just 8000/tcp with no arrow/mapping, confirming it has no published port: it's only ever reached by frontend over the internal Compose network, never from the host. This matches the docker-compose.yml exactly, where only mlflow and frontend declare a ports: mapping.
+
+Question 8:
+The prediction stayed exactly the same after moving the champion alias to the new version. serve.py loads the model once at container startup (model = mlflow.pyfunc.load_model(...) runs at import time), resolving @champion to whatever version it points to at that instant, then holds that model in memory for the container's whole lifetime. Reassigning the alias afterward doesn't notify inference in any way — mlflow has no push mechanism to running clients. The single command that picks up the new Staging/champion version without rebuilding any image is `docker compose restart inference`, which kills and restarts the container, re-running serve.py's startup code and re-resolving @champion to whatever it currently points to.
+
+Question 9:
+docker compose restart inference works with no rebuild because the model was never baked into the image in the first place — it's fetched over the network from mlflow at container startup, the same way it worked in Lab 3. restart just kills the running process and starts a fresh one from the same image; that fresh start re-runs serve.py's startup code, which re-resolves models:/food11@champion to whatever version the alias currently points to. This confirms the image only contains code and dependencies, not model weights — the model lives entirely in mlflow's registry and is pulled in at runtime
+
+Question 10:
+After a plain `docker compose down` / `up`, everything was still there — the food11 model (both versions, and the champion alias) survived intact. down without -v only removes containers, not the named volumes Compose manages, so mlflow-data stayed on disk untouched, and the new mlflow container mounted that same volume and found its mlflow.db and artifacts exactly as before.
+
+After `docker compose down -v` / `up`, all experiments and registered models were gone — a completely fresh, empty mlflow instance, identical to the very first time we started it. -v additionally deletes the named volumes, so mlflow-data itself was wiped this time, taking the sqlite database and all artifacts with it. This is the same behavior proven at the start of the lab with the marker.txt test on a single throwaway container, just now demonstrated across the whole Compose stack.
+
+Question 11:
+Docker Compose only orchestrates containers on a single Docker engine/machine — everything we used (the private network, named volumes, depends_on) exists within that one host's scope, with no concept of other machines.
+
+Running inference as 3 replicas behind a load balancer needs: a multi-node orchestrator (Kubernetes, Docker Swarm, etc.) that can actually schedule multiple copies of a container possibly across different machines (Compose's deploy.replicas is ignored outside Swarm mode); a real load balancer/service mesh, since Compose's DNS only ever resolves a service name to one container, not a pool; and real readiness health checks so traffic isn't routed to a replica that's still starting up — the same gap as Question 6's depends_on, just at scale.
+
+Making mlflow survive a machine failure needs: durable, network-attached storage instead of a local named volume (which lives on this one machine's disk and dies with it); a real client-server database (e.g. Postgres) instead of SQLite, which isn't safe to share or fail over between hosts; and a cluster manager that can detect a dead node and reschedule mlflow's container onto a healthy machine — Compose has no concept of node health or failover at all.

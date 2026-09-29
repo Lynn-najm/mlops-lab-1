@@ -7,4 +7,5 @@ EXPOSE 5000
 CMD ["mlflow", "server", \
      "--host", "0.0.0.0", "--port", "5000", \
      "--backend-store-uri", "sqlite:////mlflow-data/mlflow.db", \
-     "--default-artifact-root", "/mlflow-data/mlruns"]
+     "--artifacts-destination", "/mlflow-data/mlartifacts", \
+     "--allowed-hosts", "mlflow,mlflow:5000,localhost,localhost:5001,127.0.0.1,127.0.0.1:5001"]
