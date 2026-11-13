@@ -16,11 +16,25 @@ CATEGORIES = {
     "10": "Vegetable-Fruit",
 }
 
+# Ordered list of the 11 class names (index = label number)
+CLASSES = list(CATEGORIES.values())
+
 RAW_DIR = Path("data/food11_raw")
 PROCESSED_DIR = Path("data/food11_processed")
 MINI_DIR = Path("data/food11_processed_mini")
 
 SPLITS = ["training", "evaluation", "validation"]
+
+
+def category_from_filename(filename: str) -> str:
+    """'3_120.jpg' -> 'Egg'. Raises KeyError if the label is not a known class."""
+    label = filename.split("_")[0]
+    return CATEGORIES[label]
+
+
+def resize_image(img: Image.Image, size: int = 128) -> Image.Image:
+    """Returns an RGB image of size x size."""
+    return img.convert("RGB").resize((size, size))
 
 
 def prepare_output_folders():
@@ -29,7 +43,7 @@ def prepare_output_folders():
             shutil.rmtree(output_dir)
 
         for split in SPLITS:
-            for category in CATEGORIES.values():
+            for category in CLASSES:
                 (output_dir / split / category).mkdir(
                     parents=True,
                     exist_ok=True
@@ -37,7 +51,7 @@ def prepare_output_folders():
 
 
 def process_split(split):
-    mini_counts = {category: 0 for category in CATEGORIES.values()}
+    mini_counts = {category: 0 for category in CLASSES}
 
     input_dir = RAW_DIR / split
 
@@ -45,17 +59,14 @@ def process_split(split):
         if not image_path.is_file():
             continue
 
-        label = image_path.name.split("_")[0]
-
-        if label not in CATEGORIES:
+        try:
+            category = category_from_filename(image_path.name)
+        except KeyError:
             continue
-
-        category = CATEGORIES[label]
 
         try:
             with Image.open(image_path) as image:
-                image = image.convert("RGB")
-                image = image.resize((128, 128))
+                image = resize_image(image)
 
                 processed_path = (
                     PROCESSED_DIR

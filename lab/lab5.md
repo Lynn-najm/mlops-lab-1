@@ -1,0 +1,3 @@
+Question 1:
+A unit test should check my code, not the infrastructure around it. Loading the real model from the MLflow server can fail even when my code is correct: (1) the MLflow server is down or unreachable — on a CI runner there is no server at all, so load_model crashes before any assertion runs; (2) the champion alias was moved or the model version deleted, so the test loads a different model or none; (3) it's slow, because downloading and loading torch weights takes far longer than a unit test should. A fake model avoids all of this: the test is fast, offline and reproducible, and it checks what is actually mine (decoding the image, building the JSON).
+
