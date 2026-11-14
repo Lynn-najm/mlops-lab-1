@@ -1,6 +1,7 @@
-from pathlib import Path
-from PIL import Image
 import shutil
+from pathlib import Path
+
+from PIL import Image
 
 CATEGORIES = {
     "0": "Bread",
@@ -88,7 +89,7 @@ def process_split(split):
                     image.save(mini_path)
                     mini_counts[category] += 1
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"Could not process {image_path}: {e}")
 
 

@@ -1,14 +1,14 @@
 import argparse
 from pathlib import Path
 
-import mlflow
 import mlflow.pytorch
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
-from torchvision.models import resnet18, ResNet18_Weights
+from torchvision.models import ResNet18_Weights, resnet18
 
+import mlflow
 
 mlflow.set_tracking_uri("http://127.0.0.1:5001")
 mlflow.set_experiment("food11")
@@ -211,7 +211,7 @@ def main():
                 step=epoch
             )
 
-        test_loss, test_accuracy = evaluate(
+        _test_loss, test_accuracy = evaluate(
             model,
             test_loader,
             loss_fn,

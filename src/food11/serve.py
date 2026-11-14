@@ -1,12 +1,12 @@
-import os
 import io
+import os
 from contextlib import asynccontextmanager
 
-import torch
 import mlflow.pyfunc
 import numpy as np
+import torch
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from PIL import Image
-from fastapi import FastAPI, UploadFile, File, HTTPException
 
 from src.food11.data import CLASSES
 
