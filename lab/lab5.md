@@ -3,3 +3,9 @@ A unit test should check my code, not the infrastructure around it. Loading the 
 
 Question 2:
 It proves that my API code works end to end around the model: the image upload is decoded and resized, the prediction array is read correctly (argmax, max), the class id is mapped to the right name, and the JSON has the expected fields with a confidence between 0 and 1. It does not prove the model is any good: the fake always answers "Bread", so the test would pass even if the real model predicted randomly. It also doesn't prove the real model loads from MLflow, that it accepts the input shape my code builds, or that its output format matches what the fake returns.
+
+Question 3:
+The check "no image appears in two splits" caught it (the content hash of the copied file matched a training file). A train/test duplicate is more dangerous because it fails silently: a corrupted image crashes the training script, so I notice and fix it immediately, while a duplicate lets everything run normally. The model is then tested on a photo it already saw in training, so the test accuracy is inflated and I believe the model is better than it really is, and I might promote and ship it based on a wrong number. This dataset actually has this problem already: 35 identical images across splits in the mini set (611 in the full set).
+
+Question 4:
+(1) In the CI workflow, after pulling the data onto the runner with dvc pull from a remote the runner can reach (DagsHub or cloud storage, not a local folder), or run it on a small sample dataset committed to the repo, so it still runs without the full data. (2) In the data preparation / training pipeline on the machine that has the data, right after data.py produces the dataset and before train.py starts (for example as a DVC stage or a pre-train step), so bad data stops the pipeline before any training time is wasted.
