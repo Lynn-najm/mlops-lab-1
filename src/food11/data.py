@@ -30,7 +30,7 @@ SPLITS = ["training", "evaluation", "validation"]
 def category_from_filename(filename: str) -> str:
     """'3_120.jpg' -> 'Egg'. Raises KeyError if the label is not a known class."""
     label = filename.split("_")[0]
-    return CATEGORIES["0"]
+    return CATEGORIES[label]
 
 
 def resize_image(img: Image.Image, size: int = 128) -> Image.Image:
